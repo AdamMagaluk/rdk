@@ -49,7 +49,14 @@ func init() {
 			return newClientFromConn(conn, name, logger)
 		},
 	})
-	registry.RegisterComponent(resourceSubtype, "myActualComponent", registry.Component{
+
+
+	model := resource.Model{
+		ModelFamily: resource.ModelFamily{Namespace: "acme", ModelFamily: "myfamily"},
+		Name:        "myActualComponent",
+	}
+
+	registry.RegisterComponent(resourceSubtype, model, registry.Component{
 		Constructor: func(
 			ctx context.Context,
 			deps registry.Dependencies,
