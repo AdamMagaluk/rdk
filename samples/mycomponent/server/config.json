@@ -5,7 +5,7 @@
     "components":
     [
         {
-            "model": "myActualComponent",
+            "model": "acme:myfamily:myActualComponent",
             "name": "comp1",
             "namespace": "acme",
             "type": "mycomponent"

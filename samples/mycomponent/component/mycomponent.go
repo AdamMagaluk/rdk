@@ -22,10 +22,18 @@ import (
 	"go.viam.com/rdk/utils"
 )
 
-var resourceSubtype = resource.NewSubtype(
-	"acme",
-	resource.ResourceTypeComponent,
-	resource.SubtypeName("mycomponent"),
+var (
+	resourceSubtype = resource.NewSubtype(
+		"acme",
+		resource.ResourceTypeComponent,
+		resource.SubtypeName("mycomponent"),
+	)
+
+	model = resource.NewModel(
+		resource.Namespace("acme"),
+		resource.ModelFamilyName("myfamily"),
+		resource.ModelName("myActualComponent"),
+	)
 )
 
 // Named is a helper for getting the named MyComponent's typed resource name.
@@ -49,12 +57,6 @@ func init() {
 			return newClientFromConn(conn, name, logger)
 		},
 	})
-
-
-	model := resource.Model{
-		ModelFamily: resource.ModelFamily{Namespace: "acme", ModelFamily: "myfamily"},
-		Name:        "myActualComponent",
-	}
 
 	registry.RegisterComponent(resourceSubtype, model, registry.Component{
 		Constructor: func(
