@@ -22,12 +22,14 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ModuleServiceClient interface {
-	// Register allows a module to register the components/services it handles
-	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
-	// Ready allows a module to signal when it is ready to recieve commands
-	Ready(ctx context.Context, in *ReadyRequest, opts ...grpc.CallOption) (*ReadyResponse, error)
-	// Done allows a module to indicate it has gracefully shut down
-	Done(ctx context.Context, in *DoneRequest, opts ...grpc.CallOption) (*DoneResponse, error)
+	// AddResource tells a module about a new resource to handle
+	AddResource(ctx context.Context, in *AddResourceRequest, opts ...grpc.CallOption) (*AddResourceResponse, error)
+	// RemoveResource tells a module to close/stop a resource and remove it
+	RemoveResource(ctx context.Context, in *RemoveResourceRequest, opts ...grpc.CallOption) (*RemoveResourceResponse, error)
+	// ReconfigureResource tells a module to reconfigure an existing resource
+	ReconfigureResource(ctx context.Context, in *ReconfigureResourceRequest, opts ...grpc.CallOption) (*ReconfigureResourceResponse, error)
+	// CloseModule tells a module to stop all activity and terminate
+	CloseModule(ctx context.Context, in *CloseModuleRequest, opts ...grpc.CallOption) (*CloseModuleResponse, error)
 }
 
 type moduleServiceClient struct {
@@ -38,27 +40,36 @@ func NewModuleServiceClient(cc grpc.ClientConnInterface) ModuleServiceClient {
 	return &moduleServiceClient{cc}
 }
 
-func (c *moduleServiceClient) Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error) {
-	out := new(RegisterResponse)
-	err := c.cc.Invoke(ctx, "/proto.api.module.v1.ModuleService/Register", in, out, opts...)
+func (c *moduleServiceClient) AddResource(ctx context.Context, in *AddResourceRequest, opts ...grpc.CallOption) (*AddResourceResponse, error) {
+	out := new(AddResourceResponse)
+	err := c.cc.Invoke(ctx, "/proto.api.module.v1.ModuleService/AddResource", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *moduleServiceClient) Ready(ctx context.Context, in *ReadyRequest, opts ...grpc.CallOption) (*ReadyResponse, error) {
-	out := new(ReadyResponse)
-	err := c.cc.Invoke(ctx, "/proto.api.module.v1.ModuleService/Ready", in, out, opts...)
+func (c *moduleServiceClient) RemoveResource(ctx context.Context, in *RemoveResourceRequest, opts ...grpc.CallOption) (*RemoveResourceResponse, error) {
+	out := new(RemoveResourceResponse)
+	err := c.cc.Invoke(ctx, "/proto.api.module.v1.ModuleService/RemoveResource", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *moduleServiceClient) Done(ctx context.Context, in *DoneRequest, opts ...grpc.CallOption) (*DoneResponse, error) {
-	out := new(DoneResponse)
-	err := c.cc.Invoke(ctx, "/proto.api.module.v1.ModuleService/Done", in, out, opts...)
+func (c *moduleServiceClient) ReconfigureResource(ctx context.Context, in *ReconfigureResourceRequest, opts ...grpc.CallOption) (*ReconfigureResourceResponse, error) {
+	out := new(ReconfigureResourceResponse)
+	err := c.cc.Invoke(ctx, "/proto.api.module.v1.ModuleService/ReconfigureResource", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *moduleServiceClient) CloseModule(ctx context.Context, in *CloseModuleRequest, opts ...grpc.CallOption) (*CloseModuleResponse, error) {
+	out := new(CloseModuleResponse)
+	err := c.cc.Invoke(ctx, "/proto.api.module.v1.ModuleService/CloseModule", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +80,14 @@ func (c *moduleServiceClient) Done(ctx context.Context, in *DoneRequest, opts ..
 // All implementations must embed UnimplementedModuleServiceServer
 // for forward compatibility
 type ModuleServiceServer interface {
-	// Register allows a module to register the components/services it handles
-	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
-	// Ready allows a module to signal when it is ready to recieve commands
-	Ready(context.Context, *ReadyRequest) (*ReadyResponse, error)
-	// Done allows a module to indicate it has gracefully shut down
-	Done(context.Context, *DoneRequest) (*DoneResponse, error)
+	// AddResource tells a module about a new resource to handle
+	AddResource(context.Context, *AddResourceRequest) (*AddResourceResponse, error)
+	// RemoveResource tells a module to close/stop a resource and remove it
+	RemoveResource(context.Context, *RemoveResourceRequest) (*RemoveResourceResponse, error)
+	// ReconfigureResource tells a module to reconfigure an existing resource
+	ReconfigureResource(context.Context, *ReconfigureResourceRequest) (*ReconfigureResourceResponse, error)
+	// CloseModule tells a module to stop all activity and terminate
+	CloseModule(context.Context, *CloseModuleRequest) (*CloseModuleResponse, error)
 	mustEmbedUnimplementedModuleServiceServer()
 }
 
@@ -82,14 +95,17 @@ type ModuleServiceServer interface {
 type UnimplementedModuleServiceServer struct {
 }
 
-func (UnimplementedModuleServiceServer) Register(context.Context, *RegisterRequest) (*RegisterResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
+func (UnimplementedModuleServiceServer) AddResource(context.Context, *AddResourceRequest) (*AddResourceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddResource not implemented")
 }
-func (UnimplementedModuleServiceServer) Ready(context.Context, *ReadyRequest) (*ReadyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ready not implemented")
+func (UnimplementedModuleServiceServer) RemoveResource(context.Context, *RemoveResourceRequest) (*RemoveResourceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveResource not implemented")
 }
-func (UnimplementedModuleServiceServer) Done(context.Context, *DoneRequest) (*DoneResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Done not implemented")
+func (UnimplementedModuleServiceServer) ReconfigureResource(context.Context, *ReconfigureResourceRequest) (*ReconfigureResourceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReconfigureResource not implemented")
+}
+func (UnimplementedModuleServiceServer) CloseModule(context.Context, *CloseModuleRequest) (*CloseModuleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CloseModule not implemented")
 }
 func (UnimplementedModuleServiceServer) mustEmbedUnimplementedModuleServiceServer() {}
 
@@ -104,56 +120,74 @@ func RegisterModuleServiceServer(s grpc.ServiceRegistrar, srv ModuleServiceServe
 	s.RegisterService(&ModuleService_ServiceDesc, srv)
 }
 
-func _ModuleService_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RegisterRequest)
+func _ModuleService_AddResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ModuleServiceServer).Register(ctx, in)
+		return srv.(ModuleServiceServer).AddResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.api.module.v1.ModuleService/Register",
+		FullMethod: "/proto.api.module.v1.ModuleService/AddResource",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ModuleServiceServer).Register(ctx, req.(*RegisterRequest))
+		return srv.(ModuleServiceServer).AddResource(ctx, req.(*AddResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ModuleService_Ready_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadyRequest)
+func _ModuleService_RemoveResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ModuleServiceServer).Ready(ctx, in)
+		return srv.(ModuleServiceServer).RemoveResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.api.module.v1.ModuleService/Ready",
+		FullMethod: "/proto.api.module.v1.ModuleService/RemoveResource",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ModuleServiceServer).Ready(ctx, req.(*ReadyRequest))
+		return srv.(ModuleServiceServer).RemoveResource(ctx, req.(*RemoveResourceRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ModuleService_Done_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DoneRequest)
+func _ModuleService_ReconfigureResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReconfigureResourceRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ModuleServiceServer).Done(ctx, in)
+		return srv.(ModuleServiceServer).ReconfigureResource(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.api.module.v1.ModuleService/Done",
+		FullMethod: "/proto.api.module.v1.ModuleService/ReconfigureResource",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ModuleServiceServer).Done(ctx, req.(*DoneRequest))
+		return srv.(ModuleServiceServer).ReconfigureResource(ctx, req.(*ReconfigureResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ModuleService_CloseModule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseModuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ModuleServiceServer).CloseModule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.api.module.v1.ModuleService/CloseModule",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ModuleServiceServer).CloseModule(ctx, req.(*CloseModuleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -166,16 +200,20 @@ var ModuleService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*ModuleServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Register",
-			Handler:    _ModuleService_Register_Handler,
+			MethodName: "AddResource",
+			Handler:    _ModuleService_AddResource_Handler,
 		},
 		{
-			MethodName: "Ready",
-			Handler:    _ModuleService_Ready_Handler,
+			MethodName: "RemoveResource",
+			Handler:    _ModuleService_RemoveResource_Handler,
 		},
 		{
-			MethodName: "Done",
-			Handler:    _ModuleService_Done_Handler,
+			MethodName: "ReconfigureResource",
+			Handler:    _ModuleService_ReconfigureResource_Handler,
+		},
+		{
+			MethodName: "CloseModule",
+			Handler:    _ModuleService_CloseModule_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
