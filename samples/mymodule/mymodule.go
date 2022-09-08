@@ -2,84 +2,102 @@ package main
 
 import (
 	"context"
-	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	pb "go.viam.com/api/proto/viam/module/v1"
 	"go.viam.com/rdk/component/motor"
 	"go.viam.com/rdk/config"
-	rdkclient "go.viam.com/rdk/grpc/client"
+	"go.viam.com/rdk/module"
 	pbgeneric "go.viam.com/rdk/proto/api/component/generic/v1"
-	"go.viam.com/rdk/resource"
 )
 
 type myComponent struct {
+	name string
+	myString string
+	myMotor motor.Motor
+}
+
+func (c *myComponent) GetName() string {
+	return c.name
+}
+
+func (c *myComponent) GetString() string {
+	return c.myString
+}
+
+func (c *myComponent) SetString(myString string) {
+	c.myString = myString
+}
+
+func (c *myComponent) ZoomZoom(power float64) {
+	c.myMotor.SetPower(context.Background(), power, nil)
+}
+
+type server struct {
+	mu sync.Mutex
+	components map[string]*myComponent
+	mod *module.Module
 	pbgeneric.UnimplementedGenericServiceServer
 }
 
-var	myMotor motor.Motor
+func (s *server) AddComponent(ctx context.Context, cfg *config.Component, depList []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	logger.Debugf("Config: %+v", cfg)
+	logger.Debugf("Deps: %+v", depList)
 
-func (c *myComponent) Do(ctx context.Context, req *pbgeneric.DoRequest) (*pbgeneric.DoResponse, error) {
+	motorname, ok := cfg.Attributes["motor"]
+	if !ok || motorname == "" {
+		return errors.New("motor_name must be set in the config")
+	}
 
+	r, err := s.mod.GetParentComponent(motorname.(string))
+	if err != nil {
+		return err
+	}
+
+	motor, ok := r.(motor.Motor)
+	if !ok {
+		return errors.Errorf("component %s is not a motor", motorname)
+	}
+	s.components[cfg.Name] = &myComponent{name: cfg.Name, myMotor: motor}
+	return nil
+}
+
+func (s *server) Do(ctx context.Context, req *pbgeneric.DoRequest) (*pbgeneric.DoResponse, error) {
 	cmd := req.Command.AsMap()
-	myMotor.SetPower(ctx, cmd["speed"].(float64), nil)
+	c, ok := s.components[req.Name]
+	if !ok {
+		return nil, errors.Errorf("no component named: %s", req.Name)
+	}
 
-	logger.Debugf("SMURF INPUT: %+v %+v", cmd, myMotor)
+	returnVal := make(map[string]interface{})
 
-	res, err := structpb.NewStruct(map[string]interface{}{"Speed": cmd["speed"]})
+	switch cmd["command"] {
+	case "whoami":
+		returnVal["name"] = c.GetName()
+	case "getstring":
+		returnVal["mystring"] = c.GetString()
+	case "setstring":
+		c.SetString(cmd["value"].(string))
+	case "setspeed":
+		c.ZoomZoom(cmd["speed"].(float64))
+	}
+
+	res, err := structpb.NewStruct(returnVal)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &pbgeneric.DoResponse{
-		Result: res,
-	}
-	return resp, nil
+	return &pbgeneric.DoResponse{Result: res}, nil
 }
 
-type server struct {
-	pb.UnimplementedModuleServiceServer
-}
-
-func (s *server) AddComponent(ctx context.Context, req *pb.AddComponentRequest) (*pb.AddComponentResponse, error) {
-	cfg, err := config.ComponentConfigFromProto(req.Config)
-	if err != nil {
-		return &pb.AddComponentResponse{}, err
-	}
-	logger.Debugf("Config: %+v", cfg)
-	logger.Debugf("Deps: %+v", req.Dependencies)
-
-	for _, dep := range req.Dependencies {
-		rc, err := rdkclient.New(context.Background(), "localhost:8080", logger)
-		if err != nil {
-			logger.Error(err)
-		}
-		rName, _ := resource.NewFromString(dep)
-		if err != nil {
-			logger.Error(err)
-		}
-		m, err := rc.ResourceByName(rName)
-		if err != nil {
-			logger.Error(err)
-		}
-		logger.Debugf("Component1: %+v\n", m)
-		mreal, ok := m.(motor.Motor)
-		logger.Debugf("Component2: %+v, %+v\n", mreal, ok)
-		myMotor = mreal
-	}
-
-	return &pb.AddComponentResponse{}, nil
-}
-
-func (s *server) Ready(ctx context.Context, req *pb.ReadyRequest) (*pb.ReadyResponse, error) {
-	return &pb.ReadyResponse{Ready: true}, nil
-}
 
 var logger = NewLogger()
 
@@ -98,26 +116,17 @@ func main() {
 	signal.Notify(shutdown, os.Interrupt)
 	signal.Notify(shutdown, syscall.SIGTERM)
 
+	server := &server{components: make(map[string]*myComponent)}
 
-	oldMask := syscall.Umask(0o077)
-	lis, err := net.Listen("unix", os.Args[1])
-	syscall.Umask(oldMask)
-	defer os.Remove(os.Args[1])
+	server.mod = module.NewModule(os.Args[1], logger)
+	server.mod.RegisterAddComponent(server.AddComponent)
+	pbgeneric.RegisterGenericServiceServer(server.mod.GRPCServer(), server)
+
+	err := server.mod.Start()
+	defer server.mod.Close()
 	if err != nil {
-		logger.Fatalf("failed to listen: %v", err)
+		logger.Error(err)
+		return
 	}
-	s := grpc.NewServer()
-	pb.RegisterModuleServiceServer(s, &server{})
-	pbgeneric.RegisterGenericServiceServer(s, &myComponent{})
-
-
-	logger.Debugf("server listening at %v", lis.Addr())
-	go func() {
-		if err := s.Serve(lis); err != nil {
-			logger.Fatalf("failed to serve: %v", err)
-		}
-	}()
 	<-shutdown
-	logger.Debug("Sutting down gracefully.")
-	s.GracefulStop()
 }
