@@ -140,7 +140,6 @@ func (s *subtypeServer) Sum(ctx context.Context, req *pb.SumRequest) (*pb.SumRes
 	return &pb.SumResponse{Sum: resp}, nil
 }
 
-
 func newClientFromConn(conn rpc.ClientConn, name string, logger golog.Logger) Summation {
 	sc := newSvcClientFromConn(conn, logger)
 	return clientFromSvcClient(sc, name)
@@ -173,7 +172,7 @@ func clientFromSvcClient(sc *serviceClient, name string) Summation {
 
 func (c *client) Sum(ctx context.Context, nums []float64) (float64, error) {
 	resp, err := c.client.Sum(ctx, &pb.SumRequest{
-		Name: c.name,
+		Name:    c.name,
 		Numbers: nums,
 	})
 	if err != nil {

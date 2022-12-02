@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package acme.service.network.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "go.acme.com/proto/api/service/network/v1";
+
+service NetworkService {
+  rpc GetInterface(GetInterfaceRequest) returns (Interface) {
+    option (google.api.http) = {
+      get: "/acme/api/v1/service/network/{name}/interface/{interface_name}"
+    };
+  }
+
+  rpc ListInterfaces(ListInterfacesRequest) returns (ListInterfacesResponse) {
+    option (google.api.http) = {
+      get: "/acme/api/v1/service/network/{name}/interface"
+    };
+  }
+
+  rpc WifiConnect(WifiConnectRequest) returns (WifiConnectResponse) {
+    option (google.api.http) = {
+      get: "/acme/api/v1/service/network/{name}/wifi/connect"
+    };
+  }
+
+  rpc WifiConnectConfirm(WifiConnectConfirmRequest) returns (WifiConnectConfirmResponse) {
+    option (google.api.http) = {
+      get: "/acme/api/v1/service/network/{name}/wifi/confirm"
+    };
+  }
+  
+  rpc WifiScan(WifiScanRequest) returns (WifiScanResponse) {
+    option (google.api.http) = {
+      get: "/acme/api/v1/service/network/{name}/wifi/scan"
+    };
+  }
+}
+
+message Interface {
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_ETHERNET = 1;
+    TYPE_WIFI = 2;
+  }
+
+  enum Flag {
+    FLAG_UNSPECIFIED = 0;
+    // interface is up
+    FLAG_UP = 1;
+    // interface supports broadcast access capability
+    FLAG_BROADCAST = 2;
+    // interface is a loopback interface
+    FLAG_LOOPBACK = 3;
+    // interface belongs to a point-to-point link
+    FLAG_POINT_TO_POINT= 4;
+    // interface supports multicast access capability
+    FLAG_MULTICAST = 5;
+  }
+
+  message Address {
+    // name of the network (for example, "tcp", "udp")
+    string network = 1;
+    // string form of address (for example, "192.0.2.1:25", "[2001:db8::1]:80")
+    string address = 2;
+  }
+
+  string name = 1;
+  Type type = 2;
+  int64 mtu = 3;
+  string hardware_address = 4;
+  repeated Flag flags = 5;
+  repeated Address addresses = 6;
+}
+
+message WifiNetwork {
+  int64 id = 1;
+  bool known = 2;
+  string ssid = 4;
+  string bssid = 5;
+  string essid = 6;
+  int64 rssi = 7;
+  int64 signal = 8;
+  int64 frequency = 9;
+  repeated string flags = 10;
+}
+
+message GetInterfaceRequest {
+  // service name in viam
+  string name = 1;
+  string interface_name = 2;
+}
+
+message ListInterfacesRequest {
+  // service name in viam
+  string name = 1;
+}
+message ListInterfacesResponse {
+  repeated Interface interfaces = 1;
+}
+
+message WifiConnectRequest {
+  // service name in viam
+  string name = 1;
+  string interface_name = 2;
+
+  google.protobuf.Duration connect_timeout = 3;
+  string ssid = 4;
+  optional string psk = 5;
+}
+message WifiConnectResponse {
+  string confirmation_token = 1;
+  google.protobuf.Duration confirmation_delay = 2;
+  google.protobuf.Timestamp confirmation_deadline = 3;
+}
+
+message WifiConnectConfirmRequest {
+  // service name in viam
+  string name = 1;
+  string confirmation_token = 2;
+}
+message WifiConnectConfirmResponse {}
+
+message WifiScanRequest {
+  // service name in viam
+  string name = 1;
+  string interface_name = 2;
+  google.protobuf.Duration duration = 3;
+}
+message WifiScanResponse {
+  repeated WifiNetwork networks = 1;
+}

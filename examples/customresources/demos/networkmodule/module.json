@@ -1,0 +1,21 @@
+{
+	"modules": [
+		{
+			"name": "NetworkModule",
+			"executable_path": "./networkmodule"
+		}
+	],
+	"services": [
+		{
+			"namespace": "acme",
+			"type": "network",
+			"name": "network-service",
+			"model": "acme:demo:mynetwork"
+		}
+	],
+	"components": [
+	],
+	"network": {
+		"bind_address": ":8080"
+	}
+}
